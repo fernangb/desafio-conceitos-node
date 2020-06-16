@@ -1,7 +1,7 @@
 const express = require("express");
 const cors = require("cors");
 
-const { uuid, isUuid } = require("uuidv4");
+const { uuid} = require("uuidv4");
 
 const app = express();
 
@@ -10,23 +10,10 @@ app.use(cors());
 
 const repositories = [];
 
-function logRequests(request,response, next){
-  const {method, url} = request;
-  const logLabel = `[${method.toUpperCase()}] ${url}`;
+const getRepositoryIndex = id => {
+  const repositoryIndex = repositories.findIndex(repository => repository.id === id);
 
-  console.log(logLabel);
-
-  return next();
-}
-
-function validateRepositoryId(request, response, next){
-  const {id} = request.params;
-
-  if(!isUuid()){
-      return response.status(400).json({error: 'This is an invalid ID'});
-  }
-  
-  return next();
+  return repositoryIndex;
 }
 
 app.get("/repositories", (request, response) => {
@@ -34,12 +21,12 @@ app.get("/repositories", (request, response) => {
 });
 
 app.post("/repositories", (request, response) => {
-  const {title, owner, techs} = request.body;
+  const {title, url, techs} = request.body;
 
   const repository = {
     id: uuid(),
     title,
-    owner,
+    url,
     techs,
     likes: 0
   }
@@ -50,19 +37,19 @@ app.post("/repositories", (request, response) => {
 });
 
 app.put("/repositories/:id", (request, response) => {
-  const {title, owner, techs} = request.body;
+  const {title, url, techs} = request.body;
   const {id} = request.params;
 
-  const repositoryIndex = repositories.findIndex(repository => repository.id === id);
+  const repositoryIndex = getRepositoryIndex(id);
 
   if(repositoryIndex<0){
-      return response.status(400).json({error: "Invalid repository"});
-  }
+    return response.status(400).json({error: "Invalid repository"});
+}
 
   const repository = {
       id,
       title,
-      owner,
+      url,
       techs,
       likes: repositories[repositoryIndex].likes
   };
@@ -74,11 +61,12 @@ app.put("/repositories/:id", (request, response) => {
 
 app.delete("/repositories/:id", (request, response) => {
   const {id} = request.params;
-  const repositoryIndex = repositories.findIndex(repository => repository.id === id);
+
+  const repositoryIndex = getRepositoryIndex(id);
 
   if(repositoryIndex<0){
-      return response.status(400).json({error: "Invalid repository"});
-  }
+    return response.status(400).json({error: "Invalid repository"});
+}
 
   repositories.splice(repositoryIndex, 1);
 
@@ -87,24 +75,26 @@ app.delete("/repositories/:id", (request, response) => {
 
 app.post("/repositories/:id/like", (request, response) => {
   const {id} = request.params;
-  const repositoryIndex = repositories.findIndex(repository => repository.id === id);
+
+  const repositoryIndex = getRepositoryIndex(id);
 
   if(repositoryIndex<0){
-      return response.status(400).json({error: "Invalid repository"});
-  }
+    return response.status(400).json({error: "Invalid repository"});
+}
+
+  const {title, url, techs, likes} = repositories[repositoryIndex]
 
   const repository = {
     id,
-    title: repositories[repositoryIndex].title,
-    owner: repositories[repositoryIndex].owner,
-    techs: repositories[repositoryIndex].techs,
-    likes: repositories[repositoryIndex].likes + 1,   
+    title,
+    url,
+    techs,
+    likes: likes + 1,   
   }
 
   repositories[repositoryIndex] = repository;
 
   return response.json(repository);
 });
-
 
 module.exports = app;
